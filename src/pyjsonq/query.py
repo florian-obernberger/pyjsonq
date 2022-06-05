@@ -2,7 +2,7 @@ __all__ = ["QueryOperator", "QueryFunc"]
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, TypeAlias
+from typing import Any, Callable
 
 
 class QueryOperator(Enum):
@@ -40,8 +40,8 @@ class QueryOperator(Enum):
     lenLte = "lenlte"
 
 
-QueryFunc: TypeAlias = Callable[[Any, Any], bool]
-QueryDict: TypeAlias = dict[str | QueryOperator, QueryFunc]
+QueryFunc = Callable[[Any, Any], bool]
+QueryDict = dict[str | QueryOperator, QueryFunc]
 
 
 @dataclass
