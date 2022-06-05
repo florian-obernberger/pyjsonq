@@ -3,14 +3,12 @@
 build:
 	py -m build
 
-publish:
-	$(build)
+publish: build
 	py -m twine upload dist/*
 
-publish-test:
-	$(build)
+publish-test: build
 	py -m twine upload --repository testpypi dist/*
 
 clean:
-	rm dist/*
-	rm dist/
+	rm ./dist/*
+	rm ./dist/
