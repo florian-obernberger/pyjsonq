@@ -6,6 +6,9 @@ from typing import Any, Callable, TypeAlias
 
 
 class QueryOperator(Enum):
+    """Enum of all query operators.
+    """
+
     eq = "="
     eqEng = "eq"
     notEq = "!="
