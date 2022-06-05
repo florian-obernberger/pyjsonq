@@ -5,7 +5,7 @@ from operator import itemgetter
 __all__ = ["JsonQuery"]
 
 import json
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, TypeAlias, TypeVar
 
 from helper import getNestedValue, deleteNestedValue, makeAlias
 from query import Query, QueryDict, defaultQueries, QueryFunc, QueryOperator
@@ -41,7 +41,7 @@ class JsonQuery:
         with open(file_path, encoding=encoding) as file:
             return cls(file.read(), separator=separator)
 
-    def From(self, node: str) -> JsonQuery:
+    def At(self, node: str) -> JsonQuery:
         value: Any = getNestedValue(self.__json_content, node, self.__separator)
         if value is None:
             raise ValueError()
@@ -140,7 +140,7 @@ class JsonQuery:
         return self.Where(key, QueryOperator.lenNotEq, val)
 
     def Find(self, path: str) -> Any:
-        return self.From(path).Get()
+        return self.At(path).Get()
 
     def Offset(self, offset: int) -> JsonQuery:
         self.__offset_records = offset
@@ -296,6 +296,53 @@ class JsonQuery:
     def Drop(self, *properties: str) -> JsonQuery:
         self.__dropped_properties.extend(properties)
         return self
+
+    # **Aliases**
+
+    at = At
+    select = Select
+    get = Get
+    where = Where
+    or_where = OrWhere
+    where_equal = WhereEqual
+    where_notEqual = WhereNotEqual
+    where_none = WhereNone
+    where_notNone = WhereNotNone
+    where_in = WhereIn
+    where_notIn = WhereNotIn
+    where_holds = WhereHolds
+    where_not_holds = WhereNotHolds
+    where_starts_with = WhereStartsWith
+    where_ends_with = WhereEndsWith
+    where_contains = WhereContains
+    where_strict_contains = WhereStrictContains
+    where_not_contains = WhereNotContains
+    where_not_strictContains = WhereNotStrictContains
+    where_len_equal = WhereLenEqual
+    where_len_not_equal = WhereLenNotEqual
+    find = Find
+    offset = Offset
+    limit = Limit
+    sum = Sum
+    count = Count
+    min = Min
+    max = Max
+    avg = Avg
+    first = First
+    last = Last
+    nth = Nth
+    group_by = GroupBy
+    distinct = Distinct
+    sort = Sort
+    sort_by = SortBy
+    reset = Reset
+    only = Only
+    pluck = Pluck
+    out = Out
+    macro = Macro
+    copy = Copy
+    more = More
+    drop = Drop
 
     # **Privat functions**
 
@@ -460,3 +507,6 @@ class JsonQuery:
 
         self.__query_index = 0
         return self
+
+
+JQuery: TypeAlias = JsonQuery

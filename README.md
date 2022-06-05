@@ -65,7 +65,7 @@ json: str = '''{"city":"dhaka","type":"weekly","temperatures":[30,39.9,35.4,33.5
 
 jq: JsonQuery = JsonQuery(json)
 
-avg_temp: float = jq.From("temperatures").Avg()
+avg_temp: float = jq.At("temperatures").Avg()
 print(avg_temp)  # 33.471428571428575
 ```
 
