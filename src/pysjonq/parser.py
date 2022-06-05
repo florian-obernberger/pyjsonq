@@ -7,7 +7,7 @@ __all__ = ["JsonQuery"]
 import json
 from typing import Any, Callable, TypeVar
 
-from helper import getNestedValue, makeAlias
+from helper import getNestedValue, deleteNestedValue, makeAlias
 from query import Query, QueryDict, defaultQueries, QueryFunc, QueryOperator
 
 DEFAULT_SEPARATOR = "."
@@ -29,6 +29,7 @@ class JsonQuery:
         self.__limit_records: int = 0
 
         self.__queries: list[list[Query]] = []
+        self.__dropped_properties: list[str] = []
         self.__attributes: list[str] = []
         self.__distinct_property: str = ""
 
@@ -59,6 +60,9 @@ class JsonQuery:
 
         if self.__limit_records != 0:
             self.__limit()
+
+        if len(self.__dropped_properties) != 0:
+            self.__drop()
 
         return self.__json_content
 
@@ -238,6 +242,7 @@ class JsonQuery:
         self.__json_content = self.__root_json_content
         self.__queries.clear()
         self.__attributes.clear()
+        self.__dropped_properties.clear()
         self.__query_index = 0
         self.__limit_records = 0
         self.__offset_records = 0
@@ -282,9 +287,14 @@ class JsonQuery:
         self.__root_json_content = self.Get()
         self.__queries.clear()
         self.__attributes.clear()
+        self.__dropped_properties.clear()
         self.queryIndex = 0
         self.limitRecords = 0
         self.distinctProperty = ""
+        return self
+
+    def Drop(self, *properties: str) -> JsonQuery:
+        self.__dropped_properties.extend(properties)
         return self
 
     # **Privat functions**
@@ -340,7 +350,7 @@ class JsonQuery:
 
         return floats
 
-    def __limit(self) -> JsonQuery:
+    def __limit(self):
         if isinstance(self.__json_content, list):
             json_content: list[Any] = self.__json_content
             if self.__limit_records <= 0:
@@ -349,9 +359,7 @@ class JsonQuery:
             if len(json_content) > self.__limit_records:
                 self.__json_content = json_content[:self.__limit_records]
 
-        return self
-
-    def __offset(self) -> JsonQuery:
+    def __offset(self):
         if isinstance(self.__json_content, list):
             json_content: list[Any] = self.__json_content
             if self.__offset_records < 0:
@@ -362,7 +370,9 @@ class JsonQuery:
             else:
                 self.__json_content.clear()
 
-        return self
+    def __drop(self):
+        for node in self.__dropped_properties:
+            self.__json_content = deleteNestedValue(self.__json_content, node, self.__separator)
 
     def __only(self):
         result: list[dict[str, Any]] = []

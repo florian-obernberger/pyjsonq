@@ -56,3 +56,28 @@ def getNestedValue(inp: Any, node: str, separator: str) -> Any:
                 return None
 
     return inp
+
+
+def deleteNestedValue(inp: Any, node: str, separator: str) -> Any:
+    parts: list[str] = node.split(separator)
+    for n in parts:
+        if isIndex(n):
+            if isinstance(inp, list):
+                l_inp: list[Any] = inp
+                if index := getIndex(n) is None:
+                    return None
+                del l_inp[index]
+                return l_inp
+
+        else:
+            valid: bool = False
+            if isinstance(inp, dict):
+                d_inp: dict[str, Any] = inp
+                del d_inp[n]
+                inp = d_inp
+                valid = True
+
+            if not valid:
+                return None
+
+    return inp
