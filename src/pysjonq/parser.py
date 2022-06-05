@@ -12,30 +12,25 @@ from query import Query, QueryDict, defaultQueries, QueryFunc, QueryOperator
 
 DEFAULT_SEPARATOR = "."
 
-_T = TypeVar("_T")
+__T = TypeVar("__T")
 
 
 class JsonQuery:
 
     def __init__(self, json_string: str, separator: str = DEFAULT_SEPARATOR) -> None:
-        self.separator: str = separator
+        self.__separator: str = separator
+        self.__root_json_content: Any = json.loads(json_string)
+        self.__json_content: Any = self.__root_json_content
 
-        self.json_string: str = json_string
-        self.root_json_content: Any = json.loads(json_string)
+        self.__query_map: QueryDict = defaultQueries()
+        self.__query_index: int = 0
 
-        self.json_content: Any = self.root_json_content
+        self.__offset_records: int = 0
+        self.__limit_records: int = 0
 
-        self.node: str = ""
-
-        self.query_map: QueryDict = defaultQueries()
-        self.query_index: int = 0
-
-        self.offset_records: int = 0
-        self.limit_records: int = 0
-
-        self.queries: list[list[Query]] = []
-        self.attributes: list[str] = []
-        self.distinct_property: str = ""
+        self.__queries: list[list[Query]] = []
+        self.__attributes: list[str] = []
+        self.__distinct_property: str = ""
 
     @classmethod
     def File(cls,
@@ -46,27 +41,26 @@ class JsonQuery:
             return cls(file.read(), separator=separator)
 
     def From(self, node: str) -> JsonQuery:
-        self.node = node
-        value: Any = getNestedValue(self.json_content, node, self.separator)
+        value: Any = getNestedValue(self.__json_content, node, self.__separator)
         if value is None:
             raise ValueError()
 
-        self.json_content = value
+        self.__json_content = value
         return self
 
     def Select(self, *properties: str) -> JsonQuery:
-        self.attributes.extend(properties)
+        self.__attributes.extend(properties)
         return self
 
     def Get(self) -> Any:
         self.__prepare()
-        if self.offset_records != 0:
+        if self.__offset_records != 0:
             self.__offset()
 
-        if self.limit_records != 0:
+        if self.__limit_records != 0:
             self.__limit()
 
-        return self.json_content
+        return self.__json_content
 
     def Where(self, key: str, cond: str | QueryOperator, val: Any) -> JsonQuery:
         query: Query = Query(
@@ -74,15 +68,15 @@ class JsonQuery:
             operator=cond if isinstance(cond, str) else cond.value,
             value=val,
         )
-        if self.query_index == 0 and len(self.queries) == 0:
-            self.queries.append([query])
+        if self.__query_index == 0 and len(self.__queries) == 0:
+            self.__queries.append([query])
         else:
-            self.queries[self.query_index].append(query)
+            self.__queries[self.__query_index].append(query)
 
         return self
 
     def OrWhere(self, key: str, cond: str | QueryOperator, val: Any) -> JsonQuery:
-        self.query_index += 1
+        self.__query_index += 1
         qquery: list[Query] = [
             Query(
                 key=key,
@@ -90,7 +84,7 @@ class JsonQuery:
                 value=val,
             )
         ]
-        self.queries.append(qquery)
+        self.__queries.append(qquery)
         return self
 
     def WhereEqual(self, key: str, val: Any) -> JsonQuery:
@@ -145,11 +139,11 @@ class JsonQuery:
         return self.From(path).Get()
 
     def Offset(self, offset: int) -> JsonQuery:
-        self.offset_records = offset
+        self.__offset_records = offset
         return self
 
     def Limit(self, limit: int) -> JsonQuery:
-        self.limit_records = limit
+        self.__limit_records = limit
         return self
 
     def Sum(self, *properties: str) -> float:
@@ -159,8 +153,8 @@ class JsonQuery:
     def Count(self) -> int | None:
         self.__prepare()
 
-        if isinstance(self.json_content, list) or isinstance(self.json_content, dict):
-            json_content: list[Any] | dict[str, Any] = self.json_content
+        if isinstance(self.__json_content, list) or isinstance(self.__json_content, dict):
+            json_content: list[Any] | dict[str, Any] = self.__json_content
             return len(json_content)
         else:
             return
@@ -179,24 +173,24 @@ class JsonQuery:
 
     def First(self) -> Any:
         self.__prepare()
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
             return json_content[0]
         else:
             return None
 
     def Last(self) -> Any:
         self.__prepare()
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
             return json_content[-1]
         else:
             return None
 
     def Nth(self, index: int) -> Any:
         self.__prepare()
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
             return json_content[index]
         else:
             return None
@@ -204,11 +198,11 @@ class JsonQuery:
     def GroupBy(self, attr: str) -> JsonQuery:
         self.__prepare()
         dt: dict[str, list[Any]] = {}
-        if isinstance(self.json_content, list):
-            json_list: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_list: list[Any] = self.__json_content
             for a in json_list:
                 if isinstance(a, dict):
-                    value = getNestedValue(a, attr, self.separator)
+                    value = getNestedValue(a, attr, self.__separator)
                     if value is None:
                         # TODO: error
                         return self
@@ -217,55 +211,54 @@ class JsonQuery:
                     else:
                         dt[str(value)].append(a)
 
-        self.json_content = dt
+        self.__json_content = dt
         return self
 
     def Distinct(self, attr: str) -> JsonQuery:
-        self.distinct_property = attr
+        self.__distinct_property = attr
         return self
 
     def Sort(self, key: Callable[[Any], Any] | None = None, reverse: bool = False) -> JsonQuery:
         self.__prepare()
-        if isinstance(self.json_content, list):
-            json_list: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_list: list[Any] = self.__json_content
             json_list.sort(reverse=reverse, key=key)
-            self.json_content = json_list
+            self.__json_content = json_list
 
         return self
 
     def SortBy(self, attr: str, reverse: bool = False) -> JsonQuery:
-        if isinstance(self.json_content, list):
-            json_list: list[dict[str, Any]] = self.json_content
-            self.json_content = sorted(json_list, key=itemgetter(attr), reverse=reverse)
+        if isinstance(self.__json_content, list):
+            json_list: list[dict[str, Any]] = self.__json_content
+            self.__json_content = sorted(json_list, key=itemgetter(attr), reverse=reverse)
 
         return self
 
     def Reset(self) -> JsonQuery:
-        self.json_content = self.root_json_content
-        self.node = ""
-        self.queries.clear()
-        self.attributes.clear()
-        self.query_index = 0
-        self.limit_records = 0
-        self.offset_records = 0
-        self.distinct_property = ""
+        self.__json_content = self.__root_json_content
+        self.__queries.clear()
+        self.__attributes.clear()
+        self.__query_index = 0
+        self.__limit_records = 0
+        self.__offset_records = 0
+        self.__distinct_property = ""
         return self
 
     def Only(self, *properties: str) -> JsonQuery:
-        self.attributes.extend(properties)
+        self.__attributes.extend(properties)
         return self.__prepare()
 
     def Pluck(self, attr: str) -> list[Any]:
         self.__prepare()
-        if self.distinct_property != "":
+        if self.__distinct_property != "":
             self.__distinct()
 
-        if self.limit_records != 0:
+        if self.__limit_records != 0:
             self.__limit()
 
         result: list[Any] = []
-        if isinstance(self.json_content, list):
-            json_list: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_list: list[Any] = self.__json_content
             for a in json_list:
                 if isinstance(a, dict):
                     d: dict[str, Any] = a
@@ -274,11 +267,11 @@ class JsonQuery:
 
         return result
 
-    def Out(self, func: Callable[[dict[str, Any] | list[Any]], _T]) -> _T:
-        return func(self.json_content)
+    def Out(self, func: Callable[[dict[str, Any] | list[Any]], __T]) -> __T:
+        return func(self.__json_content)
 
     def Macro(self, operator: str, func: QueryFunc) -> JsonQuery:
-        self.query_map[operator] = func
+        self.__query_map[operator] = func
         return self
 
     def Copy(self) -> JsonQuery:
@@ -286,10 +279,9 @@ class JsonQuery:
         return new_query.Reset()
 
     def More(self) -> JsonQuery:
-        self.root_json_content = self.Get()
-        self.node = ""
-        self.queries.clear()
-        self.attributes.clear()
+        self.__root_json_content = self.Get()
+        self.__queries.clear()
+        self.__attributes.clear()
         self.queryIndex = 0
         self.limitRecords = 0
         self.distinctProperty = ""
@@ -299,20 +291,20 @@ class JsonQuery:
 
     def __getAggregationValues(self, *properties: str) -> list[float]:
         self.__prepare()
-        if self.distinct_property != "":
+        if self.__distinct_property != "":
             self.__distinct()
 
-        if self.limit_records != 0:
+        if self.__limit_records != 0:
             self.__limit()
 
         floats: list[float] = []
 
-        if isinstance(self.json_content, list):
-            json_list: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_list: list[Any] = self.__json_content
             floats = self.__getFloatValFromArray(json_list, *properties)
 
-        if isinstance(self.json_content, dict):
-            json_dict: dict[str, Any] = self.json_content
+        if isinstance(self.__json_content, dict):
+            json_dict: dict[str, Any] = self.__json_content
             if len(properties) == 0:
                 return []
 
@@ -349,38 +341,38 @@ class JsonQuery:
         return floats
 
     def __limit(self) -> JsonQuery:
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
-            if self.limit_records <= 0:
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
+            if self.__limit_records <= 0:
                 return self
 
-            if len(json_content) > self.limit_records:
-                self.json_content = json_content[:self.limit_records]
+            if len(json_content) > self.__limit_records:
+                self.__json_content = json_content[:self.__limit_records]
 
         return self
 
     def __offset(self) -> JsonQuery:
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
-            if self.offset_records < 0:
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
+            if self.__offset_records < 0:
                 return self
 
-            if len(json_content) >= self.limit_records:
-                self.json_content = json_content[self.offset_records:]
+            if len(json_content) >= self.__limit_records:
+                self.__json_content = json_content[self.__offset_records:]
             else:
-                self.json_content.clear()
+                self.__json_content.clear()
 
         return self
 
     def __only(self):
         result: list[dict[str, Any]] = []
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
             for am in json_content:
                 tmap: dict[str, Any] = {}
-                for attr in self.attributes:
-                    node, alias = makeAlias(attr, self.separator)
-                    value = getNestedValue(am, node, self.separator)
+                for attr in self.__attributes:
+                    node, alias = makeAlias(attr, self.__separator)
+                    value = getNestedValue(am, node, self.__separator)
                     if value is None:
                         continue
 
@@ -389,7 +381,7 @@ class JsonQuery:
                 if len(tmap) > 0:
                     result.append(tmap)
 
-        self.json_content = result
+        self.__json_content = result
 
     def __findInList(self, value_list: list[Any]) -> list[Any]:
         result: list[Any] = []
@@ -403,14 +395,14 @@ class JsonQuery:
     def __findInDict(self, value_map: dict[str, Any]) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         or_passed: bool = False
-        for q_list in self.queries:
+        for q_list in self.__queries:
             and_passed: bool = True
             for q in q_list:
-                cf: QueryFunc | None = self.query_map.get(q.operator)
+                cf: QueryFunc | None = self.__query_map.get(q.operator)
                 if cf is None:
                     return result
 
-                value = getNestedValue(value_map, q.key, self.separator)
+                value = getNestedValue(value_map, q.key, self.__separator)
                 if value is None:
                     and_passed = False
                     continue
@@ -426,9 +418,9 @@ class JsonQuery:
         return result
 
     def __processQuery(self) -> JsonQuery:
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
-            self.json_content = self.__findInList(json_content)
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
+            self.__json_content = self.__findInList(json_content)
 
         return self
 
@@ -436,25 +428,25 @@ class JsonQuery:
         m: dict[str, bool] = {}
         dt: list[Any] = []
 
-        if isinstance(self.json_content, list):
-            json_content: list[Any] = self.json_content
+        if isinstance(self.__json_content, list):
+            json_content: list[Any] = self.__json_content
             for a in json_content:
                 if isinstance(a, dict):
-                    value = getNestedValue(a, self.distinct_property, self.separator)
+                    value = getNestedValue(a, self.__distinct_property, self.__separator)
                     if value is not None and m.get(str(value)) is None:
                         dt.append(a)
                         m[str(value)] = True
 
-        self.json_content = dt
+        self.__json_content = dt
         return self
 
     def __prepare(self) -> JsonQuery:
-        if len(self.queries) > 0:
+        if len(self.__queries) > 0:
             self.__processQuery()
-        if self.distinct_property != "":
+        if self.__distinct_property != "":
             self.__distinct()
-        if len(self.attributes) > 0:
+        if len(self.__attributes) > 0:
             self.__only()
 
-        self.query_index = 0
+        self.__query_index = 0
         return self
