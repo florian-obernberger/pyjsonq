@@ -7,8 +7,8 @@ __all__ = ["JsonQuery"]
 import json
 from typing import Any, Callable, TypeAlias, TypeVar
 
-from helper import getNestedValue, deleteNestedValue, makeAlias
-from query import Query, QueryDict, defaultQueries, QueryFunc, QueryOperator
+from .helper import getNestedValue, deleteNestedValue, makeAlias
+from .query import Query, QueryDict, defaultQueries, QueryFunc, QueryOperator
 
 DEFAULT_SEPARATOR = "."
 
