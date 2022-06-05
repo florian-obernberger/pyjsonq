@@ -1,8 +1,8 @@
-# pyjsonq
+# PyJsonQuery *(pyjsonq)*
 
 PyJsonQ is an easy to use and package to query json data.
 It is a rewrite of the Go package "GoJSONQ" which you can find here:
-[GoJSONQ Github Repositor][gojsonq]
+[GoJSONQ Github Repository][gojsonq]
 
 I decided to rewrite this package in Python because I love it's
 simple API and is just a beauty to work with.
@@ -11,10 +11,13 @@ simple API and is just a beauty to work with.
 
 Over time I will potentially update this package and add more fun and
 useful stuff to it, but for now the only thing I added are two
-operators for the `Where` method:
+operators for the `Where` method: `holds`, `notHolds`
 
-- `holds`
-- `notHolds`
+## Installation
+
+```bash
+pip install pyjsonquery
+```
 
 ## Usage
 
@@ -76,6 +79,7 @@ You can query over the json using various methods such as
 [**WhereIn**][whereIn],
 [**Sort**][sort],
 [**SortBy**][sortBy],
+[**Drop**][drop],
 etc.
 
 You can also aggregate your data after a query using
@@ -101,6 +105,8 @@ An overview over all query functions can be found in the
 [whereIn]: whereIn
 [sort]: sort
 [sortBy]: sortBy
+[drop]: drop
+
 [avg]: avg
 [count]: count
 [max]: max
