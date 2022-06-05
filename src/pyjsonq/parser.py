@@ -2,7 +2,7 @@ from __future__ import annotations
 from copy import deepcopy
 from operator import itemgetter
 
-__all__ = ["JsonQuery"]
+__all__ = ["JsonQuery", "JQuery"]
 
 import json
 from typing import Any, Callable, TypeAlias, TypeVar

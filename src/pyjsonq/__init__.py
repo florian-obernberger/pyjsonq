@@ -1,2 +1,2 @@
-from .parser import JsonQuery
+from .parser import JsonQuery, JQuery
 from .query import QueryFunc, QueryOperator
