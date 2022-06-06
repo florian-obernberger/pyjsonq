@@ -53,21 +53,18 @@ jq: JsonQuery = JsonQuery().String(
 
 # OR
 
-jq: JsonQuery = JsonQuery.File("./file.json")
+jq: JsonQuery = JsonQuery().File("./file.json")
 ```
 
 Once you created your query object you can then query over it using
 a variety of methods. Here is a quick example:
 
 ```python
-from pyjquery import JsonQuery
-
-json: str = '''{"city":"dhaka","type":"weekly","temperatures":[30,39.9,35.4,33.5,31.6,33.2,30.7]}'''
-
-jq: JsonQuery = JsonQuery(json)
-
 avg_temp: float = jq.At("temperatures").Avg()
 print(avg_temp)  # 33.471428571428575
+
+city_name: str = jq.Find("city")
+print(city_name)  # dhaka
 ```
 
 You can query over the json using various methods such as
