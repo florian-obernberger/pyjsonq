@@ -5,8 +5,10 @@ from operator import itemgetter
 __all__ = ["JsonQuery", "JQuery"]
 
 import json
-from typing import Any, Callable, TypeAlias, TypeVar
+import toml
+from typing import Any, Callable, TypeVar
 
+from .errors import NoNumberException, NoPropertyProvidedException, OperatorDoesntExistException, PathDoesntExistException, QueryIsEmptyException, QueryIsNotListException
 from .helper import getNestedValue, deleteNestedValue, makeAlias
 from .query import Query, QueryDict, defaultQueries, QueryFunc, QueryOperator
 
@@ -18,18 +20,31 @@ __T = TypeVar("__T")
 class JsonQuery:
     """Provides an easy to use API to query over your json data.
 
+    Parameters
+    ----------
+    separator : str
+        The separator used for separating nodes / paths for queries
+
     Usage
     -----
-    Create your query either from a string
+    First, create a new query.
 
     ```python
-    jq: JsonQuery = JsonQuery("{ ... }")
+    jq: JsonQuery = JsonQuery()
     ```
 
-    or from a file
+    Next load the data using either `File / file`,
+    `String / string`, `TOMLFile / toml_file`,
+    `TOMLString / toml_string` or `Raw / raw`.
 
     ```python
-    jq: JsonQuery = JsonQuery.File("path/to/file")
+    jq.String("{ ... }")
+    ```
+
+    And finally you can start querying over your data!
+
+    ```python
+    names = jq.At("users").Select("name")
     ```
 
     Alias & Syntax
@@ -38,10 +53,10 @@ class JsonQuery:
     - The class provides both methods in CamelCase and snake_case
     """
 
-    def __init__(self, json_string: str, separator: str = DEFAULT_SEPARATOR) -> None:
+    def __init__(self, separator: str = DEFAULT_SEPARATOR) -> None:
         self.__separator: str = separator
-        self.__root_json_content: Any = json.loads(json_string)
-        self.__json_content: Any = self.__root_json_content
+        self.___root_json_content: Any | None = None
+        self.___json_content: Any | None = None
 
         self.__query_map: QueryDict = defaultQueries()
         self.__query_index: int = 0
@@ -54,14 +69,30 @@ class JsonQuery:
         self.__attributes: list[str] = []
         self.__distinct_property: str = ""
 
-    @classmethod
-    def FromFile(
-        cls,
-        file_path: str,
-        encoding: str = "utf-8",
-        separator: str = DEFAULT_SEPARATOR,
-    ) -> JsonQuery:
-        """Create a json query from a file.
+    @property
+    def __root_json_content(self) -> Any:
+        if self.___root_json_content is None:
+            raise QueryIsEmptyException()
+
+        return self.___root_json_content
+
+    @__root_json_content.setter
+    def __root_json_content(self, value: Any):
+        self.___root_json_content = value
+
+    @property
+    def __json_content(self) -> Any:
+        if self.___json_content is None:
+            return self.__json_content
+
+        return self.___json_content
+
+    @__json_content.setter
+    def __json_content(self, value: Any):
+        self.___json_content = value
+
+    def File(self, file_path: str, encoding: str = "utf-8") -> JsonQuery:
+        """Load a json file into the query.
 
         Parameters
         ----------
@@ -69,12 +100,64 @@ class JsonQuery:
             Path to the json file
         encoding : str, optional
             The encoding of the file, by default "utf-8"
-        separator : str, optional
-            The separator used for queries, by default "."
         """
 
         with open(file_path, encoding=encoding) as file:
-            return cls(file.read(), separator=separator)
+            self.__root_json_content = json.loads(file.read())
+
+        return self
+
+    def String(self, json_string: str) -> JsonQuery:
+        """Load a json string into the query.
+
+        Parameters
+        ----------
+        json_string : str
+            The json formatted string
+        """
+
+        self.___root_json_content = json.loads(json_string)
+        return self
+
+    def TOMLFile(self, file_path: str, encoding: str = "utf-8") -> JsonQuery:
+        """Load a toml file into the query.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to the toml file
+        encoding : str, optional
+            The encoding of the file, by default "utf-8"
+        """
+
+        with open(file_path, encoding="utf-8") as file:
+            self.__root_json_content = toml.loads(file.read())
+
+        return self
+
+    def TOMLString(self, toml_string: str) -> JsonQuery:
+        """Load a toml string into the query.
+
+        Parameters
+        ----------
+        json_string : str
+            The toml formatted string
+        """
+
+        self.__root_json_content = toml.loads(toml_string)
+        return self
+
+    def Raw(self, data: list[Any] | dict[str, Any]) -> JsonQuery:
+        """Set the query content to `data`.
+
+        Parameters
+        ----------
+        data : list[Any] | dict[str, Any]
+            The data you want the query to be
+        """
+
+        self.__root_json_content = data
+        return self
 
     def At(self, node: str) -> JsonQuery:
         """Seeks the json content for the provided node.
@@ -84,17 +167,11 @@ class JsonQuery:
         node : str
             The node / path in the json content, e.g: "users.[0]" or
             "users.[1].name"
-
-        Raises
-        ------
-        ValueError
-            Raises when the specified node returns in a non existant
-            value
         """
 
         value: Any = getNestedValue(self.__json_content, node, self.__separator)
         if value is None:
-            raise ValueError()
+            raise PathDoesntExistException("At / at", node)
 
         self.__json_content = value
         return self
@@ -533,7 +610,7 @@ class JsonQuery:
             json_content: list[Any] = self.__json_content
             return json_content[0]
         else:
-            return None
+            raise QueryIsNotListException()
 
     def Last(self) -> Any:
         """Returns the last element in the current query.
@@ -549,7 +626,7 @@ class JsonQuery:
             json_content: list[Any] = self.__json_content
             return json_content[-1]
         else:
-            return None
+            raise QueryIsNotListException()
 
     def Nth(self, index: int) -> Any:
         """Returns the nth element in the current query.
@@ -571,7 +648,7 @@ class JsonQuery:
             json_content: list[Any] = self.__json_content
             return json_content[index]
         else:
-            return None
+            raise QueryIsNotListException()
 
     def GroupBy(self, attr: str) -> JsonQuery:
         """Builds a chunk of exact matched data in a group list using
@@ -591,8 +668,7 @@ class JsonQuery:
                 if isinstance(a, dict):
                     value = getNestedValue(a, attr, self.__separator)
                     if value is None:
-                        # TODO: error
-                        return self
+                        raise PathDoesntExistException("GroupBy / group_by", attr)
                     if dt.get(str(value)) is None:
                         dt[str(value)] = [a]
                     else:
@@ -631,6 +707,8 @@ class JsonQuery:
             json_list: list[Any] = self.__json_content
             json_list.sort(reverse=reverse, key=key)
             self.__json_content = json_list
+        else:
+            raise QueryIsNotListException()
 
         return self
 
@@ -649,6 +727,8 @@ class JsonQuery:
         if isinstance(self.__json_content, list):
             json_list: list[dict[str, Any]] = self.__json_content
             self.__json_content = sorted(json_list, key=itemgetter(attr), reverse=reverse)
+        else:
+            raise QueryIsNotListException()
 
         return self
 
@@ -680,7 +760,7 @@ class JsonQuery:
         return self.__prepare()
 
     def Pluck(self, attr: str) -> list[Any]:
-        """Builds a list of values from a property of a list of objects.
+        """Builds a list of values from a property of a list of dicts.
 
         Parameters
         ----------
@@ -707,6 +787,8 @@ class JsonQuery:
                     d: dict[str, Any] = a
                     if d.get(attr) is not None:
                         result.append(d[attr])
+        else:
+            raise QueryIsNotListException()
 
         return result
 
@@ -783,7 +865,11 @@ class JsonQuery:
 
     # **Aliases**
 
-    from_file = FromFile
+    file = File
+    string = String
+    toml_file = TOMLFile
+    toml_string = TOMLString
+    raw = Raw
     at = At
     select = Select
     get = Get
@@ -870,15 +956,13 @@ class JsonQuery:
             if isinstance(a, dict):
                 js_dict: dict[str, Any] = a
                 if len(properties) == 0:
-                    # TODO: error
-                    return []
+                    raise NoPropertyProvidedException()
 
                 dv: Any | None = js_dict.get(properties[0])
                 if dv is not None and (isinstance(dv, float) or isinstance(dv, int)):
                     floats.append(float(dv))
                 else:
-                    # TODO: error
-                    return []
+                    raise NoNumberException()
 
         return floats
 
@@ -942,12 +1026,11 @@ class JsonQuery:
             for q in q_list:
                 cf: QueryFunc | None = self.__query_map.get(q.operator)
                 if cf is None:
-                    return result
+                    raise OperatorDoesntExistException(q.operator)
 
                 value = getNestedValue(value_map, q.key, self.__separator)
                 if value is None:
                     and_passed = False
-                    continue
                 else:
                     qb: bool = cf(value, q.value)
                     and_passed = and_passed and qb
@@ -994,4 +1077,4 @@ class JsonQuery:
         return self
 
 
-JQuery: TypeAlias = JsonQuery
+JQuery = JsonQuery
