@@ -22,8 +22,9 @@ class JsonQuery:
 
     Parameters
     ----------
-    separator : str
-        The separator used for separating nodes / paths for queries
+    separator : str, optional
+        The separator used for separating nodes / paths for queries,
+        by default "."
 
     Usage
     -----
