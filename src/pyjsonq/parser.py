@@ -84,7 +84,7 @@ class JsonQuery:
     @property
     def __json_content(self) -> Any:
         if self.___json_content is None:
-            return self.__json_content
+            return self.__root_json_content
 
         return self.___json_content
 
