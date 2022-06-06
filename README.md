@@ -27,12 +27,13 @@ First import the `JsonQuery` class into your project
 from pyjsonq import JsonQuery
 ``` 
 
-Then you can create a query either from a string by just creating a
-new instance and giving it a json string or by calling
-`JsonQuery.File("path/to/file)`
+Next create a new JsonQuery instance and load the data into the query
+using either **File / file**, **String / string**,
+**TOMLFile / toml_file**, **TOMLString / toml_string** or
+**Raw / raw**.
 
 ```python
-jq: JsonQuery = JsonQuery(
+jq: JsonQuery = JsonQuery().String(
   """
   {
     "city": "dhaka",
