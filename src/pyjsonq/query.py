@@ -2,7 +2,7 @@ __all__ = ["QueryOperator", "QueryFunc"]
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 
 class QueryOperator(Enum):
@@ -41,7 +41,7 @@ class QueryOperator(Enum):
 
 
 QueryFunc = Callable[[Any, Any], bool]
-QueryDict = dict[str | QueryOperator, QueryFunc]
+QueryDict = Dict[str, QueryFunc]
 
 
 @dataclass
@@ -138,14 +138,14 @@ def strStrictContains(x: Any, y: Any) -> bool:
     if not isinstance(x, str) or not isinstance(y, str):
         return False
 
-    return x in y
+    return y in x
 
 
 def strContains(x: Any, y: Any) -> bool:
     if not isinstance(x, str) or not isinstance(y, str):
         return False
 
-    return x.lower() in y.lower()
+    return y.lower() in x.lower()
 
 
 def notStrStrictContains(x: Any, y: Any) -> bool:

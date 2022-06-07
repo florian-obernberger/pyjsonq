@@ -1,14 +1,27 @@
-from typing import Any
+__all__ = []
 
+from typing import Any, Optional, Tuple
 
-def parseIndex(p: str) -> int | None:
+def removeprefix(prefix: str, string: str) -> str:
+    if string.startswith(prefix):
+        return string[1:]
+    else:
+        return string
+
+def removesuffix(suffix: str, string: str) -> str:
+    if string.startswith(suffix):
+        return string[:-1]
+    else:
+        return string
+
+def parseIndex(p: str) -> Optional[int]:
     try:
         return int(p)
     except ValueError:
         return None
 
 
-def makeAlias(inp: str, separator: str) -> tuple[str, str]:
+def makeAlias(inp: str, separator: str) -> Tuple[str, str]:
     ALIAS: str = " as "
     inp = inp.replace(" As ", ALIAS)
     inp = inp.replace(" AS ", ALIAS)
@@ -28,11 +41,11 @@ def isIndex(inp: str) -> bool:
     return inp.startswith("[") and inp.endswith("]")
 
 
-def getIndex(inp: str) -> int | None:
+def getIndex(inp: str) -> Optional[int]:
     if not isIndex(inp):
         return None
 
-    ind_str: str = inp.removeprefix("[").removesuffix("]")
+    ind_str: str = removeprefix("[", removesuffix("]", inp))
     return parseIndex(ind_str)
 
 
